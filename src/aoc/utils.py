@@ -1,6 +1,6 @@
 import skimage.io
 from skimage.color import rgba2rgb, rgb2gray
-from skimage.transform import resize
+import skimage.transform
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -20,9 +20,16 @@ def extract_coin(image, bounding_box, resize_shape=(200, 200)):
     gray_image = gray_image[y1:y2, x1:x2]
 
     # Resize the image for easier processing (optional step)
-    gray_image = resize(gray_image, resize_shape)
+    gray_image = skimage.transform.resize(gray_image, resize_shape)
 
     return gray_image
+
+
+def generate_rotations(image, rotations_n):
+    for i in range(rotations_n):
+        degrees = i / rotations_n * 360
+        rotated_image = skimage.transform.rotate(image, degrees)
+        yield rotated_image, degrees
 
 
 def gaussuian_mask(shape, sigma=90):
