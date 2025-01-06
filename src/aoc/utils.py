@@ -1,6 +1,7 @@
 import skimage.io
 from skimage.color import rgba2rgb, rgb2gray
 import skimage.transform
+import skimage.feature
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -45,6 +46,20 @@ def gaussuian_mask(shape, sigma=90):
 def convolve_mask(image, mask):
     fft_image = np.fft.fftshift(np.fft.fft2(image))
     return abs(np.fft.ifft2(fft_image * mask))
+
+
+def extract_features(image, radius_bins, angle_bins):
+
+    hog_features, hog_image = skimage.feature.hog(
+        image,
+        orientations=angle_bins,
+        pixels_per_cell=(radius_bins, radius_bins),
+        cells_per_block=(2, 2),
+        visualize=True,
+        channel_axis=None,
+    )
+
+    return hog_features
 
 
 if __name__ == "__main__":
