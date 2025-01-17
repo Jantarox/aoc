@@ -14,16 +14,45 @@ def extract_coin(image, bounding_box, resize_shape=(200, 200)):
     if image.shape[-1] == 4:
         image = rgba2rgb(image)
 
-    # Convert RGB to grayscale
-    gray_image = rgb2gray(image)
-
     # Extract the coin region
-    gray_image = gray_image[y1:y2, x1:x2]
+    image = image[y1:y2, x1:x2]
 
     # Resize the image for easier processing (optional step)
-    gray_image = skimage.transform.resize(gray_image, resize_shape)
+    image = skimage.transform.resize(image, resize_shape)
 
-    return gray_image
+    # clahe = cv2.createCLAHE(clipLimit=5)
+    # final_img = clahe.apply(image_bw) + 30
+
+    return image
+
+
+def extract_color_features(image):
+    # crop out center square of image
+    image = image[75:125, 75:125]
+
+    # rgb channel means
+    rgb_means = np.mean(image, axis=(0, 1))
+
+    # convert to hsv
+    image = skimage.color.rgb2hsv(image)
+
+    # hsv channel means
+    hsv_means = np.mean(image, axis=(0, 1))
+
+    # combine means
+    image = np.concatenate((rgb_means, hsv_means), axis=0)
+
+    return image
+
+
+def grayscale_equalize_coin(image):
+    # Convert RGB to grayscale
+    image = rgb2gray(image)
+
+    # Normalize histogram
+    image = skimage.exposure.equalize_adapthist(image)
+
+    return image
 
 
 def generate_rotations(image, rotations_n):
@@ -48,14 +77,15 @@ def convolve_mask(image, mask):
     return abs(np.fft.ifft2(fft_image * mask))
 
 
-def extract_features(image, radius_bins, angle_bins):
+def extract_hog_features(
+    image, orientations=8, pixels_per_cell=(16, 16), cells_per_block=(3, 3)
+):
 
-    hog_features, hog_image = skimage.feature.hog(
+    hog_features = skimage.feature.hog(
         image,
-        orientations=angle_bins,
-        pixels_per_cell=(radius_bins, radius_bins),
-        cells_per_block=(2, 2),
-        visualize=True,
+        orientations=orientations,
+        pixels_per_cell=pixels_per_cell,
+        cells_per_block=cells_per_block,
         channel_axis=None,
     )
 
@@ -64,7 +94,7 @@ def extract_features(image, radius_bins, angle_bins):
 
 if __name__ == "__main__":
     current_path = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(current_path, "data/20241117_213835.jpg")
+    image_path = os.path.join(current_path, "data/1/20241117_213835.jpg")
     image = skimage.io.imread(image_path)
 
     resize_shape = (200, 200)
@@ -72,8 +102,10 @@ if __name__ == "__main__":
     mask_sigma = 15
 
     image = extract_coin(image, bounding_box, resize_shape)
-    mask = gaussuian_mask(resize_shape, mask_sigma)
-    filtered = convolve_mask(image, mask)
+    gray_image = skimage.exposure.equalize_adapthist(image)
+
+    # mask = gaussuian_mask(resize_shape, mask_sigma)
+    # filtered = convolve_mask(image, mask)
 
     # Show the original image and the filtered image
 
@@ -81,7 +113,7 @@ if __name__ == "__main__":
 
     ax[0].imshow(image, cmap="gray")
     ax[0].set_title("Image")
-    ax[1].imshow(filtered, cmap="gray")
-    ax[1].set_title("High-pass FFT filtered")
+    ax[1].imshow(gray_image, cmap="gray")
+    ax[1].set_title("Histogram equalized")
 
     plt.show()
